@@ -1,0 +1,222 @@
+---
+title: "Data Wrangling - Formats and Imports"
+output:
+  html_document:
+    df_print: paged
+---
+
+# 9 Introduction
+
+# 10 Tibbles 
+```{r}
+library(tidyverse) #pull up package 
+
+as_tibble(iris) #coerce a data frame to a tibble
+tibble(
+  x = 1:5, 
+  y = 1, 
+  z = x ^ 2 + y
+) #create new tibble from individual vectors
+
+tb <- tibble(
+  `:)` = "smile", 
+  ` ` = "space",
+  `2000` = "number"
+)
+tb # To refer to non-syntacti variables, you need to surround them with backticks "`"
+
+tribble(
+  ~x, ~y, ~z,
+  #--|--|----
+  "a", 2, 3.6,
+  "b", 1, 8.5
+)
+# Another way to create a tibble is with tribble(), short for transposed tibble. tribble() is customised for data entry in code: column headings are defined by formulas (i.e. they start with ~), and entries are separated by commas
+
+nycflights13::flights %>% 
+  View() #nyc flight data
+```
+#How can you tell if an object is a tibble? (Hint: try printing mtcars, which is a regular data frame). The data frame shows the first 10 columns if the object is a tibble and all of the columns if it is not.
+```{r}
+mtcars
+```
+
+
+#Compare and contrast the following operations on a data.frame and equivalent tibble. What is different? Why might the default data frame behaviours cause you frustration? The columns can autfill when writiting out data in the $ format.
+
+```{r}
+df <- data.frame(abc = 1, xyz = "a")
+df$x
+df[, "xyz"] #prints [1] a Levels: a
+df[, c("abc", "xyz")] #shows 1 as abc and a as xyz
+
+tbl <- as_tibble(df)
+tbl$x
+tbl[, "xyz"] #prints xyz a
+tbl[, c("abc", "xyz")] #shows 1 as abc and a as xyz
+```
+
+#If you have the name of a variable stored in an object, e.g. var <- "mpg", how can you extract the reference variable from a tibble? You can use the double bracket, like `df[[var]]`. You cannot use the dollar sign, because `df$var` would look for a column named `var`.
+
+
+#Practice referring to non-syntactic names in the following data frame by: 
+#* Extracting the variable called 1.
+
+#*Plotting a scatterplot of 1 vs 2.
+
+#*Creating a new column called 3 which is 2 divided by 1.
+
+#*Renaming the columns to one, two and three.
+
+```{r}
+annoying <- tibble(
+  `1` = 1:10,
+  `2` = `1` * 2 + rnorm(length(`1`))
+) #insert data frame
+
+annoying$`1` # extract 1
+
+ggplot(annoying, aes(x = `1`, y = `2`)) +
+      geom_point() # plot a scatterplot of 1 vs 2
+
+annoying[["3"]] <- annoying$`2` / annoying$`1` # create a new column called 3 which is 2 divided by 1
+
+annoying <- rename(annoying, one = `1`, two = `2`, three = `3`)
+    glimpse(annoying) # rename columns
+```
+
+#What does tibble::enframe() do? When might you use it?
+#The function `tibble::enframe()` converts named vectors to a data frame with names and values.
+```{r}
+enframe(c(a = 1, b = 2, c = 3))
+```
+
+#What option controls how many additional column names are printed at the footer of a tibble? The `n_extra` argument determines the number of extra columns to print information for.
+
+# 11 Data import
+## load flat files in R with the readr package, which is part of the core tidyverse
+# * read_csv() reads comma delimited files
+# * read_csv2() reads semicolon separated files (common in countries where , is used as the decimal place)
+# * read_tsv() reads tab delimited files
+# * read_delim() reads in files with any delimiter
+```{r}
+read_csv("a,b,c
+1,2,3
+4,5,6")
+
+read_csv("The first line of metadata
+  The second line of metadata
+  x,y,z
+  1,2,3", skip = 2)
+
+read_csv("# A comment I want to skip
+  x,y,z
+  1,2,3", comment = "#")
+
+read_csv("1,2,3\n4,5,6", col_names = FALSE) # use col_names = FALSE to tell read_csv() not to treat the first row as headings, and instead label them sequentially from X1 to Xn
+
+str(parse_logical(c("TRUE", "FALSE", "NA"))) #>  logi [1:3] TRUE FALSE NA
+str(parse_integer(c("1", "2", "3"))) #>  int [1:3] 1 2 3
+str(parse_date(c("2010-01-01", "1979-10-14"))) #phrasers are an important building block for readr
+```
+## 8 important Phrasers
+# parse_logical() and parse_integer() parse logicals and integers respectively
+
+#parse_double() is a strict numeric parser, and parse_number() is a flexible numeric parser. These are more complicated than you might expect because different parts of the world write numbers in different ways.
+
+#parse_character() seems so simple that it shouldn’t be necessary. But one complication makes it quite important: character encodings.
+
+#parse_factor() create factors, the data structure that R uses to represent categorical variables with fixed and known values.
+
+#parse_datetime(), parse_date(), and parse_time() allow you to parse various date & time specifications. These are the most complicated because there are so many different ways of writing dates
+
+#parse_number() ignores non-numeric characters before and after the number
+```{r}
+charToRaw("Hadley") # each hexadecimal number represents a byte of information
+charToRaw("Emily") # [1] 45 6d 69 6c 79
+```
+```{r}
+(x1 <- "El Ni\xf1o was particularly bad this year")
+(x2 <- "\x82\xb1\x82\xf1\x82\xc9\x82\xbf\x82\xcd")
+
+parse_character(x1, locale = locale(encoding = "Latin1")) #> [1] "El Niño was particularly bad this year"
+parse_character(x2, locale = locale(encoding = "Shift-JIS")) #> [1] "こんにちは"
+
+guess_encoding(charToRaw(x1)) # guess_encoding() can help figure out which encoding is correct if it isn't included in the data documentation
+
+fruit <- c("apple", "banana")
+parse_factor(c("apple", "banana", "bananana"), levels = fruit)
+```
+## Year
+#* %Y (4 digits).
+#* %y (2 digits); 00-69 -> 2000-2069, 70-99 -> 1970-1999.
+## Month
+#* %m (2 digits).
+#* %b (abbreviated name, like “Jan”).
+#* %B (full name, “January”).
+## Day
+#* %d (2 digits).
+#* %e (optional leading space).
+## Time
+#* %H 0-23 hour.
+#* %I 0-12, must be used with %p.
+#* %p AM/PM indicator.
+#* %M minutes.
+#* %S integer seconds.
+#* %OS real seconds.
+#* %Z Time zone (as name, e.g. America/Chicago). Beware of abbreviations: if you’re American, note that “EST” is a Canadian time zone that does not have daylight savings time. It is not Eastern Standard Time! We’ll come back to this time zones.
+#* %z (as offset from UTC, e.g. +0800).
+## Non-digits
+#* %. skips one non-digit character.
+#* %* skips any number of non-digits.
+
+#What are the most important arguments to locale()? `encoding` helps with international data notation
+
+#What happens if you try and set decimal_mark and grouping_mark to the same character? What happens to the default value of grouping_mark when you set decimal_mark to “,”? What happens to the default value of decimal_mark when you set the grouping_mark to “.”? It returns an error 
+
+#I didn’t discuss the date_format and time_format options to locale(). What do they do? Construct an example that shows when they might be useful. They set the default date/time formats
+```{r}
+read_csv("a\n05-02-00")
+read_csv("a\n05-02-00", locale = locale(date_format = "%d-%m-%y")) #for date
+
+read_csv("a\n02-00-08 am")
+read_csv("a\n02-00-08 am", locale = locale(time_format = "%M-%S-%I %p")) #for time
+```
+
+
+#If you live outside the US, create a new locale object that encapsulates the settings for the types of file you read most commonly.
+```{r}
+ locale(date_names = "es",
+       date_format = "%Y/%m/%d",
+       time_format = "%H/%M/%S",
+       grouping_mark = ".")
+```
+
+#What’s the difference between read_csv() and read_csv2()? The first reads comma-delimited files and the second one read semi-colon delimited files
+
+#What are the most common encodings used in Europe? What are the most common encodings used in Asia? Do some googling to find out. No internet right now!
+
+#Generate the correct format string to parse each of the following dates and times:
+```{r}
+d1 <- "January 1, 2010"
+parse_date(d1, format = "%B %d, %Y")
+
+d2 <- "2015-Mar-07"
+parse_date(d2, "%Y-%b-%d")
+
+d3 <- "06-Jun-2017"
+parse_date(d3, "%d-%b-%Y")
+
+d4 <- c("August 19 (2015)", "July 1 (2015)")
+parse_date(d4, "%B %d (%Y)")
+
+d5 <- "12/30/14" # Dec 30, 2014
+parse_date(d5, "%m/%d/%y")
+
+t1 <- "1705"
+parse_time(t1, "%H%M")
+
+t2 <- "11:15:10.12 PM"
+parse_time(t2, "%I:%M:%OS %p")
+```
+
